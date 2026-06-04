@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import type { CreateAlumnoDto, ContactoEmergencia } from '../../../shared/types/alumnos.types';
+import type { CreateAlumnoDto } from '../../../shared/types/alumnos.types';
 import { validateEmail, validatePhone } from '../../../shared/utils/validators';
 
 interface Props {
@@ -10,50 +10,49 @@ interface Props {
   submitLabel?: string;
 }
 
-const EMPTY_CONTACTO: ContactoEmergencia = { nombre: '', relacion: 'padre', telefono: '', email: '' };
+type FormState = Required<{ [K in keyof CreateAlumnoDto]: string }>;
+
+const EMPTY: FormState = {
+  nombre: '', apellido: '', dni: '', fecha_nacimiento: '',
+  genero: '', nacionalidad: '', email: '', telefono: '',
+  domicilio_calle: '', domicilio_numero: '', domicilio_piso: '',
+  domicilio_torre: '', domicilio_depto: '',
+  localidad: '', provincia: '', codigo_postal: '',
+};
 
 export function AlumnoForm({ initial = {}, onSubmit, error, isLoading, submitLabel = 'Guardar' }: Props) {
-  const [form, setForm] = useState({
-    nombre:          initial.nombre          ?? '',
-    apellido:        initial.apellido        ?? '',
-    dni:             initial.dni             ?? '',
-    fecha_nacimiento:initial.fecha_nacimiento ?? '',
-    genero:          initial.genero          ?? '',
-    nacionalidad:    initial.nacionalidad    ?? '',
-    email:           initial.email           ?? '',
-    telefono:        initial.telefono        ?? '',
-    domicilio:       initial.domicilio       ?? '',
+  const [form, setForm] = useState<FormState>({
+    ...EMPTY,
+    nombre:           initial.nombre           ?? '',
+    apellido:         initial.apellido         ?? '',
+    dni:              initial.dni              ?? '',
+    fecha_nacimiento: initial.fecha_nacimiento ?? '',
+    genero:           initial.genero           ?? '',
+    nacionalidad:     initial.nacionalidad     ?? '',
+    email:            initial.email            ?? '',
+    telefono:         initial.telefono         ?? '',
+    domicilio_calle:  initial.domicilio_calle  ?? '',
+    domicilio_numero: initial.domicilio_numero ?? '',
+    domicilio_piso:   initial.domicilio_piso   ?? '',
+    domicilio_torre:  initial.domicilio_torre  ?? '',
+    domicilio_depto:  initial.domicilio_depto  ?? '',
+    localidad:        initial.localidad        ?? '',
+    provincia:        initial.provincia        ?? '',
+    codigo_postal:    initial.codigo_postal    ?? '',
   });
-  const [contactos, setContactos] = useState<ContactoEmergencia[]>(initial.contactos ?? []);
-  const [addingContacto, setAddingContacto] = useState(false);
-  const [nuevoContacto, setNuevoContacto] = useState<ContactoEmergencia>(EMPTY_CONTACTO);
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; telefono?: string }>({});
 
-  function setField(field: keyof typeof form) {
-    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-      setForm((prev) => ({ ...prev, [field]: e.target.value }));
-  }
-
-  function agregarContacto() {
-    if (!nuevoContacto.nombre) return;
-    const c: ContactoEmergencia = {
-      nombre:   nuevoContacto.nombre,
-      relacion: nuevoContacto.relacion,
-      ...(nuevoContacto.telefono ? { telefono: nuevoContacto.telefono } : {}),
-      ...(nuevoContacto.email    ? { email: nuevoContacto.email }       : {}),
-    };
-    setContactos((prev) => [...prev, c]);
-    setNuevoContacto(EMPTY_CONTACTO);
-    setAddingContacto(false);
-  }
+  const setField = (f: keyof FormState) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setForm(prev => ({ ...prev, [f]: e.target.value }));
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const emailResult = validateEmail(form.email);
     const phoneResult = validatePhone(form.telefono);
     const errors: { email?: string; telefono?: string } = {};
-    if (!emailResult.valid) errors.email = emailResult.error;
-    if (!phoneResult.valid) errors.telefono = phoneResult.error;
+    if (!emailResult.valid)  errors.email   = emailResult.error;
+    if (!phoneResult.valid)  errors.telefono = phoneResult.error;
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
@@ -68,8 +67,14 @@ export function AlumnoForm({ initial = {}, onSubmit, error, isLoading, submitLab
     if (form.email)            dto.email            = form.email.toLowerCase().trim();
     if (phoneResult.normalized) dto.telefono        = phoneResult.normalized;
     else if (form.telefono)     dto.telefono        = form.telefono.trim();
-    if (form.domicilio)        dto.domicilio        = form.domicilio.trim();
-    if (contactos.length > 0)  dto.contactos        = contactos;
+    if (form.domicilio_calle)  dto.domicilio_calle  = form.domicilio_calle.trim();
+    if (form.domicilio_numero) dto.domicilio_numero = form.domicilio_numero.trim();
+    if (form.domicilio_piso)   dto.domicilio_piso   = form.domicilio_piso.trim();
+    if (form.domicilio_torre)  dto.domicilio_torre  = form.domicilio_torre.trim();
+    if (form.domicilio_depto)  dto.domicilio_depto  = form.domicilio_depto.trim();
+    if (form.localidad)        dto.localidad        = form.localidad.trim();
+    if (form.provincia)        dto.provincia        = form.provincia.trim();
+    if (form.codigo_postal)    dto.codigo_postal    = form.codigo_postal.trim();
     onSubmit(dto);
   }
 
@@ -77,28 +82,23 @@ export function AlumnoForm({ initial = {}, onSubmit, error, isLoading, submitLab
     <form onSubmit={handleSubmit} style={S.form}>
       {error && <div style={S.error}>{error}</div>}
 
-      {/* ── Datos obligatorios ── */}
+      {/* ── Datos personales ── */}
       <section style={S.section}>
         <h3 style={S.sectionTitle}>Datos personales</h3>
         <div style={S.grid2}>
-          <label style={S.label}>
-            Apellido *
+          <label style={S.label}>Apellido *
             <input required style={S.input} value={form.apellido} onChange={setField('apellido')} placeholder="García" />
           </label>
-          <label style={S.label}>
-            Nombre *
+          <label style={S.label}>Nombre *
             <input required style={S.input} value={form.nombre} onChange={setField('nombre')} placeholder="Juan" />
           </label>
-          <label style={S.label}>
-            DNI *
+          <label style={S.label}>DNI *
             <input required style={S.input} value={form.dni} onChange={setField('dni')} placeholder="38123456" inputMode="numeric" />
           </label>
-          <label style={S.label}>
-            Fecha de nacimiento
+          <label style={S.label}>Fecha de nacimiento
             <input type="date" style={S.input} value={form.fecha_nacimiento} onChange={setField('fecha_nacimiento')} />
           </label>
-          <label style={S.label}>
-            Género
+          <label style={S.label}>Género
             <select style={S.input} value={form.genero} onChange={setField('genero')}>
               <option value="">Sin especificar</option>
               <option value="masculino">Masculino</option>
@@ -107,8 +107,7 @@ export function AlumnoForm({ initial = {}, onSubmit, error, isLoading, submitLab
               <option value="no_especificado">Prefiero no decir</option>
             </select>
           </label>
-          <label style={S.label}>
-            Nacionalidad
+          <label style={S.label}>Nacionalidad
             <input style={S.input} value={form.nacionalidad} onChange={setField('nacionalidad')} placeholder="Argentina" />
           </label>
         </div>
@@ -118,134 +117,79 @@ export function AlumnoForm({ initial = {}, onSubmit, error, isLoading, submitLab
       <section style={S.section}>
         <h3 style={S.sectionTitle}>Contacto</h3>
         <div style={S.grid2}>
-          <label style={S.label}>
-            Email
+          <label style={S.label}>Email
             <input
               style={{ ...S.input, ...(fieldErrors.email ? S.inputError : {}) }}
               value={form.email}
-              onChange={(e) => { setField('email')(e); setFieldErrors(f => ({ ...f, email: undefined })); }}
+              onChange={e => { setField('email')(e); setFieldErrors(prev => ({ ...prev, email: undefined })); }}
               placeholder="alumno@ejemplo.com"
             />
             {fieldErrors.email && <span style={S.fieldError}>{fieldErrors.email}</span>}
           </label>
-          <label style={S.label}>
-            Teléfono
+          <label style={S.label}>Teléfono
             <input
               style={{ ...S.input, ...(fieldErrors.telefono ? S.inputError : {}) }}
               value={form.telefono}
-              onChange={(e) => { setField('telefono')(e); setFieldErrors(f => ({ ...f, telefono: undefined })); }}
+              onChange={e => { setField('telefono')(e); setFieldErrors(f => ({ ...f, telefono: undefined })); }}
               placeholder="+54 9 11 1234-5678"
             />
             {fieldErrors.telefono && <span style={S.fieldError}>{fieldErrors.telefono}</span>}
           </label>
         </div>
-        <label style={{ ...S.label, marginTop: 14 }}>
-          Domicilio
-          <input style={S.input} value={form.domicilio} onChange={setField('domicilio')} placeholder="Av. Corrientes 1234, piso 2, CABA" />
-        </label>
       </section>
 
-      {/* ── Contactos de emergencia ── */}
+      {/* ── Domicilio ── */}
       <section style={S.section}>
-        <h3 style={S.sectionTitle}>Contactos de emergencia</h3>
+        <h3 style={S.sectionTitle}>Domicilio</h3>
+        <div style={{ ...S.grid2, gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}>
+          <label style={{ ...S.label, gridColumn: 'span 2' }}>Calle
+            <input style={S.input} value={form.domicilio_calle} onChange={setField('domicilio_calle')} placeholder="Av. Corrientes" />
+          </label>
+          <label style={S.label}>Número
+            <input style={S.input} value={form.domicilio_numero} onChange={setField('domicilio_numero')} placeholder="1234" />
+          </label>
+          <label style={S.label}>Piso
+            <input style={S.input} value={form.domicilio_piso} onChange={setField('domicilio_piso')} placeholder="3" />
+          </label>
+          <label style={S.label}>Torre
+            <input style={S.input} value={form.domicilio_torre} onChange={setField('domicilio_torre')} placeholder="B" />
+          </label>
+          <label style={S.label}>Depto
+            <input style={S.input} value={form.domicilio_depto} onChange={setField('domicilio_depto')} placeholder="4B" />
+          </label>
+          <label style={S.label}>Localidad
+            <input style={S.input} value={form.localidad} onChange={setField('localidad')} placeholder="CABA" />
+          </label>
+          <label style={S.label}>Provincia
+            <input style={S.input} value={form.provincia} onChange={setField('provincia')} placeholder="Buenos Aires" />
+          </label>
+          <label style={S.label}>Código postal
+            <input style={S.input} value={form.codigo_postal} onChange={setField('codigo_postal')} placeholder="1043" />
+          </label>
+        </div>
+      </section>
 
-        {contactos.length === 0 && !addingContacto && (
-          <p style={S.emptyNote}>Sin contactos aún.</p>
-        )}
-
-        {contactos.map((c, i) => (
-          <div key={i} style={S.contactoCard}>
-            <div style={{ flex: 1 }}>
-              <span style={S.contactoNombre}>{c.nombre}</span>
-              <span style={S.contactoRelacion}>{c.relacion}</span>
-              {c.telefono && <span style={S.contactoMeta}> · {c.telefono}</span>}
-              {c.email    && <span style={S.contactoMeta}> · {c.email}</span>}
-            </div>
-            <button
-              type="button"
-              style={S.contactoRemove}
-              onClick={() => setContactos((prev) => prev.filter((_, j) => j !== i))}
-            >✕</button>
-          </div>
-        ))}
-
-        {addingContacto && (
-          <div style={S.contactoForm}>
-            <div style={S.grid2}>
-              <label style={S.label}>
-                Nombre *
-                <input
-                  style={S.input}
-                  value={nuevoContacto.nombre}
-                  onChange={(e) => setNuevoContacto((f) => ({ ...f, nombre: e.target.value }))}
-                  placeholder="María García"
-                  autoFocus
-                />
-              </label>
-              <label style={S.label}>
-                Relación
-                <select
-                  style={S.input}
-                  value={nuevoContacto.relacion}
-                  onChange={(e) => setNuevoContacto((f) => ({ ...f, relacion: e.target.value as ContactoEmergencia['relacion'] }))}
-                >
-                  <option value="padre">Padre</option>
-                  <option value="madre">Madre</option>
-                  <option value="tutor">Tutor/a</option>
-                  <option value="otro">Otro</option>
-                </select>
-              </label>
-              <label style={S.label}>
-                Teléfono
-                <input
-                  style={S.input}
-                  value={nuevoContacto.telefono}
-                  onChange={(e) => setNuevoContacto((f) => ({ ...f, telefono: e.target.value }))}
-                  placeholder="11-5555-5555"
-                />
-              </label>
-              <label style={S.label}>
-                Email
-                <input
-                  type="email"
-                  style={S.input}
-                  value={nuevoContacto.email}
-                  onChange={(e) => setNuevoContacto((f) => ({ ...f, email: e.target.value }))}
-                  placeholder="contacto@ejemplo.com"
-                />
-              </label>
-            </div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 12, justifyContent: 'flex-end' }}>
-              <button type="button" style={S.btnSecondary} onClick={() => { setAddingContacto(false); setNuevoContacto(EMPTY_CONTACTO); }}>
-                Cancelar
-              </button>
-              <button type="button" style={S.btnMini} disabled={!nuevoContacto.nombre} onClick={agregarContacto}>
-                Agregar
-              </button>
-            </div>
-          </div>
-        )}
-
-        {!addingContacto && (
-          <button type="button" style={S.btnAddContacto} onClick={() => setAddingContacto(true)}>
-            + Agregar contacto de emergencia
-          </button>
-        )}
+      {/* ── Tutores ── */}
+      <section style={S.section}>
+        <h3 style={S.sectionTitle}>Tutores / responsables</h3>
+        <div style={S.infoBox}>
+          <span style={{ fontSize: 18 }}>👥</span>
+          <span>
+            Los tutores y responsables se cargan desde la <strong>Ficha del alumno</strong> una vez creado el registro.
+            El sistema permite buscar tutores ya registrados (p.ej. hermanos en la institución) para evitar duplicar datos.
+          </span>
+        </div>
       </section>
 
       {/* ── Documentación ── */}
       <section style={S.section}>
         <h3 style={S.sectionTitle}>Documentación</h3>
-        <div style={S.docNote}>
-          <span style={S.docNoteIcon}>📎</span>
-          <span>
-            Podés adjuntar foto carnet, DNI y otros documentos desde la{' '}
-            <strong>Ficha Completa</strong> una vez creado el alumno.
-          </span>
+        <div style={S.infoBox}>
+          <span style={{ fontSize: 18 }}>📎</span>
+          <span>Podés adjuntar foto carnet, DNI y otros documentos desde la <strong>Ficha Completa</strong> una vez creado el alumno.</span>
         </div>
       </section>
 
-      {/* ── Footer ── */}
       <div style={S.footer}>
         <button type="submit" style={{ ...S.btnPrimary, opacity: isLoading ? 0.6 : 1 }} disabled={isLoading}>
           {isLoading ? 'Guardando...' : submitLabel}
@@ -256,27 +200,16 @@ export function AlumnoForm({ initial = {}, onSubmit, error, isLoading, submitLab
 }
 
 const S: Record<string, React.CSSProperties> = {
-  form:           { display: 'flex', flexDirection: 'column', gap: 0 },
-  error:          { background: '#fee2e2', color: '#b91c1c', padding: '10px 14px', borderRadius: 8, fontSize: 14, marginBottom: 20 },
-  section:        { borderBottom: '1px solid #f1f5f9', paddingBottom: 24, marginBottom: 24 },
-  sectionTitle:   { margin: '0 0 16px', fontSize: 14, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' },
-  grid2:          { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14 },
-  label:          { display: 'flex', flexDirection: 'column', gap: 5, fontSize: 13, color: '#374151', fontWeight: 500 },
-  input:          { padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 14, background: '#fff', fontFamily: 'inherit' },
-  inputError:     { borderColor: '#ef4444' },
-  fieldError:     { fontSize: 12, color: '#dc2626', marginTop: 2 },
-  emptyNote:      { margin: '0 0 12px', fontSize: 13, color: '#94a3b8' },
-  contactoCard:   { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: '#f8fafc', borderRadius: 8, marginBottom: 8 },
-  contactoNombre: { fontSize: 14, fontWeight: 600, color: '#0f172a', marginRight: 8 },
-  contactoRelacion:{ fontSize: 11, background: '#e0f2fe', color: '#0369a1', padding: '2px 8px', borderRadius: 20, fontWeight: 600 },
-  contactoMeta:   { fontSize: 12, color: '#64748b' },
-  contactoRemove: { background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 14, padding: '2px 6px', flexShrink: 0 },
-  contactoForm:   { border: '1px dashed #bfdbfe', borderRadius: 10, padding: '16px', marginBottom: 12, background: '#f8fafc' },
-  btnAddContacto: { width: '100%', padding: '9px', background: 'none', border: '1px dashed #d1d5db', borderRadius: 8, cursor: 'pointer', fontSize: 13, color: '#64748b', textAlign: 'center', marginTop: 4 } as React.CSSProperties,
-  docNote:        { display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 16px', background: '#eff6ff', borderRadius: 8, fontSize: 13, color: '#1e40af', lineHeight: 1.5 },
-  docNoteIcon:    { fontSize: 18, flexShrink: 0 },
-  footer:         { display: 'flex', justifyContent: 'flex-end', paddingTop: 8 },
-  btnPrimary:     { padding: '11px 28px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' },
-  btnSecondary:   { padding: '8px 16px', background: '#fff', border: '1px solid #d1d5db', borderRadius: 7, cursor: 'pointer', fontSize: 13 },
-  btnMini:        { padding: '8px 16px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 7, cursor: 'pointer', fontSize: 13, fontWeight: 600 },
+  form:        { display: 'flex', flexDirection: 'column', gap: 0 },
+  error:       { background: '#fee2e2', color: '#b91c1c', padding: '10px 14px', borderRadius: 8, fontSize: 14, marginBottom: 20 },
+  section:     { borderBottom: '1px solid #f1f5f9', paddingBottom: 24, marginBottom: 24 },
+  sectionTitle:{ margin: '0 0 16px', fontSize: 14, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' },
+  grid2:       { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14 },
+  label:       { display: 'flex', flexDirection: 'column', gap: 5, fontSize: 13, color: '#374151', fontWeight: 500 },
+  input:       { padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 14, background: '#fff', fontFamily: 'inherit' },
+  inputError:  { borderColor: '#ef4444' },
+  fieldError:  { fontSize: 12, color: '#dc2626', marginTop: 2 },
+  infoBox:     { display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 16px', background: '#eff6ff', borderRadius: 8, fontSize: 13, color: '#1e40af', lineHeight: 1.5 },
+  footer:      { display: 'flex', justifyContent: 'flex-end', paddingTop: 8 },
+  btnPrimary:  { padding: '11px 28px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' },
 };

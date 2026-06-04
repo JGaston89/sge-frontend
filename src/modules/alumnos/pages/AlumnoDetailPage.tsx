@@ -3,7 +3,9 @@ import { Navigate, useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { AxiosError } from 'axios';
 import { useAuthContext } from '../../../store/AuthContext';
-import { useAlumno, useAlumnoHistorial, useBajaAlumno, useUpdateAlumno } from '../hooks/useAlumnos';
+import { useAlumno, useAlumnoHistorial, useBajaAlumno, useUpdateAlumno, useTutores, useRemoveTutor } from '../hooks/useAlumnos';
+import { TutorFormModal } from '../components/TutorFormModal';
+import type { Tutor } from '../../../shared/types/alumnos.types';
 import { useCalificacionesAlumno } from '../../calificaciones/hooks/useCalificaciones';
 import { pdfApi } from '../../../api/pdf.api';
 import { documentosApi } from '../../../api/documentos.api';
@@ -13,7 +15,13 @@ import type { BajaAlumnoDto } from '../../../shared/types/alumnos.types';
 import { TIPOS_DOCUMENTO, tipoDocumentoLabel, formatBytes } from '../../../shared/types/documentos.types';
 import { ESTADO_COLORS } from '../../../shared/types/inscripciones.types';
 
-type Tab = 'datos' | 'historial' | 'calificaciones' | 'documentos' | 'inscripciones';
+type Tab = 'datos' | 'tutores' | 'historial' | 'calificaciones' | 'documentos' | 'inscripciones';
+
+const RELACION_LABEL: Record<string, string> = {
+  padre: 'Padre', madre: 'Madre', abuelo: 'Abuelo', abuela: 'Abuela',
+  tio: 'Tío', tia: 'Tía', tutor_legal: 'Tutor legal',
+  hermano: 'Hermano', hermana: 'Hermana', otro: 'Otro',
+};
 
 export function AlumnoDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -21,6 +29,7 @@ export function AlumnoDetailPage() {
   const [tab, setTab] = useState<Tab>('datos');
   const [editing, setEditing] = useState(false);
   const [showBaja, setShowBaja] = useState(false);
+  const [tutorModal, setTutorModal] = useState<{ open: boolean; tutor?: Tutor }>({ open: false });
   const [bajaMotivo, setBajaMotivo] = useState('');
   const [bajaFecha, setBajaFecha] = useState(new Date().toISOString().slice(0, 10));
   const [uploadTipo, setUploadTipo] = useState(TIPOS_DOCUMENTO[0].value);
@@ -60,6 +69,8 @@ export function AlumnoDetailPage() {
   const { data: alumno, isLoading } = useAlumno(id!);
   const { data: historial } = useAlumnoHistorial(id!);
   const { data: calificaciones } = useCalificacionesAlumno(id!);
+  const { data: tutores = [], refetch: refetchTutores } = useTutores(id!);
+  const removeTutorMutation = useRemoveTutor(id!);
   const updateMutation = useUpdateAlumno(id!);
   const bajaMutation = useBajaAlumno(id!);
 
@@ -102,13 +113,13 @@ export function AlumnoDetailPage() {
 
       {/* Tabs */}
       <div style={styles.tabs}>
-        {(['datos', 'historial', 'calificaciones', 'documentos', 'inscripciones'] as Tab[]).map((t) => (
+        {(['datos', 'tutores', 'calificaciones', 'documentos', 'inscripciones', 'historial'] as Tab[]).map((t) => (
           <button
             key={t}
             style={{ ...styles.tab, ...(tab === t ? styles.tabActive : {}) }}
             onClick={() => setTab(t)}
           >
-            {t.charAt(0).toUpperCase() + t.slice(1)}
+            {t === 'tutores' ? `Tutores (${tutores.length})` : t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
         ))}
       </div>
@@ -116,17 +127,37 @@ export function AlumnoDetailPage() {
       <div style={styles.card}>
         {tab === 'datos' && !editing && (
           <dl style={styles.dl}>
-            <Row label="DNI" value={alumno.dni ?? '—'} />
-            <Row label="Fecha de nacimiento" value={alumno.fecha_nacimiento ? new Date(alumno.fecha_nacimiento).toLocaleDateString('es-AR', { timeZone: 'UTC' }) : '—'} />
-            <Row label="Email" value={alumno.email ?? '—'} />
-            <Row label="Teléfono" value={alumno.telefono ?? '—'} />
-            <Row label="Alta" value={new Date(alumno.created_at).toLocaleDateString('es-AR')} />
+            <Row label="DNI"               value={alumno.dni ?? '—'} />
+            <Row label="Fecha nacimiento"  value={alumno.fecha_nacimiento ? new Date(alumno.fecha_nacimiento).toLocaleDateString('es-AR', { timeZone: 'UTC' }) : '—'} />
+            <Row label="Género"            value={alumno.genero ?? '—'} />
+            <Row label="Nacionalidad"      value={alumno.nacionalidad ?? '—'} />
+            <Row label="Email"             value={alumno.email ?? '—'} />
+            <Row label="Teléfono"          value={alumno.telefono ?? '—'} />
+            {(alumno.domicilio_calle || alumno.localidad) && <>
+              <Row label="Domicilio" value={[alumno.domicilio_calle, alumno.domicilio_numero, alumno.domicilio_piso && `Piso ${alumno.domicilio_piso}`, alumno.domicilio_depto && `Depto ${alumno.domicilio_depto}`].filter(Boolean).join(' ')} />
+              <Row label="Localidad / Prov." value={[alumno.localidad, alumno.provincia, alumno.codigo_postal].filter(Boolean).join(', ')} />
+            </>}
+            <Row label="Alta"              value={new Date(alumno.created_at).toLocaleDateString('es-AR')} />
           </dl>
         )}
 
         {tab === 'datos' && editing && (
           <AlumnoForm
-            initial={{ ...alumno, email: alumno.email ?? undefined, telefono: alumno.telefono ?? undefined }}
+            initial={{
+              ...alumno,
+              email:            alumno.email            ?? undefined,
+              telefono:         alumno.telefono         ?? undefined,
+              genero:           (alumno.genero ?? undefined) as 'masculino' | 'femenino' | 'otro' | 'no_especificado' | undefined,
+              nacionalidad:     alumno.nacionalidad     ?? undefined,
+              domicilio_calle:  alumno.domicilio_calle  ?? undefined,
+              domicilio_numero: alumno.domicilio_numero ?? undefined,
+              domicilio_piso:   alumno.domicilio_piso   ?? undefined,
+              domicilio_torre:  alumno.domicilio_torre  ?? undefined,
+              domicilio_depto:  alumno.domicilio_depto  ?? undefined,
+              localidad:        alumno.localidad        ?? undefined,
+              provincia:        alumno.provincia        ?? undefined,
+              codigo_postal:    alumno.codigo_postal    ?? undefined,
+            }}
             onSubmit={(dto) => updateMutation.mutate(dto, { onSuccess: () => setEditing(false) })}
             error={updateMutation.isError ? (() => {
               const data = (updateMutation.error as AxiosError<{ message: string; details?: { message: string }[] }>).response?.data;
@@ -136,6 +167,59 @@ export function AlumnoDetailPage() {
             isLoading={updateMutation.isPending}
             submitLabel="Actualizar"
           />
+        )}
+
+        {/* ── Tutores ─────────────────────────────────────── */}
+        {tab === 'tutores' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+              {alumno.estado === 'activo' && (
+                <button
+                  style={styles.btnPrimary}
+                  onClick={() => setTutorModal({ open: true })}
+                >
+                  + Agregar tutor / responsable
+                </button>
+              )}
+            </div>
+
+            {tutores.length === 0 && (
+              <p style={styles.empty}>Sin tutores registrados.</p>
+            )}
+
+            {tutores.map((t) => (
+              <div key={t.alumno_tutor_id} style={styles.tutorCard}>
+                <div style={styles.tutorHeader}>
+                  <div>
+                    <span style={styles.tutorNombre}>{t.apellido}, {t.nombre}</span>
+                    <span style={styles.tutorRelacion}>{RELACION_LABEL[t.relacion] ?? t.relacion}</span>
+                    {t.es_contacto_emergencia  && <span style={styles.badge}>Emergencia</span>}
+                    {t.es_responsable_economico && <span style={{ ...styles.badge, background: '#fef9c3', color: '#854d0e' }}>Resp. económico</span>}
+                    {t.vive_con_alumno          && <span style={{ ...styles.badge, background: '#f0fdf4', color: '#166534' }}>Convive</span>}
+                  </div>
+                  {alumno.estado === 'activo' && (
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button style={styles.btnMiniSecondary} onClick={() => setTutorModal({ open: true, tutor: t })}>
+                        Editar
+                      </button>
+                      <button
+                        style={styles.btnMiniDanger}
+                        onClick={() => { if (confirm(`¿Desvincular a ${t.nombre} ${t.apellido}?`)) removeTutorMutation.mutate(t.id); }}
+                      >
+                        Desvincular
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <div style={styles.tutorMeta}>
+                  {t.tipo_documento} {t.numero_documento}
+                  {t.telefono && <span> · {t.telefono}</span>}
+                  {t.email && <span> · {t.email}</span>}
+                  {t.localidad && <span> · {t.localidad}{t.provincia ? `, ${t.provincia}` : ''}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
         )}
 
         {tab === 'historial' && (
@@ -353,6 +437,16 @@ export function AlumnoDetailPage() {
         )}
       </div>
 
+      {/* Modal tutor */}
+      {tutorModal.open && (
+        <TutorFormModal
+          alumnoId={id!}
+          tutorEditar={tutorModal.tutor}
+          onSave={() => { setTutorModal({ open: false }); refetchTutores(); }}
+          onClose={() => setTutorModal({ open: false })}
+        />
+      )}
+
       {/* Modal baja */}
       {showBaja && (
         <div style={styles.overlay}>
@@ -434,10 +528,18 @@ const styles: Record<string, React.CSSProperties> = {
     borderBottom: '2px solid transparent',
     marginBottom: -2,
   },
-  tabActive: { color: '#2563eb', borderBottomColor: '#2563eb', fontWeight: 600 },
-  card: { background: '#fff', borderRadius: '0 0 12px 12px', padding: 28, border: '1px solid #e2e8f0', borderTop: 'none' },
-  dl: { margin: 0 },
-  empty: { color: '#94a3b8', textAlign: 'center', padding: 24 },
+  tabActive:        { color: '#2563eb', borderBottomColor: '#2563eb', fontWeight: 600 },
+  card:             { background: '#fff', borderRadius: '0 0 12px 12px', padding: 28, border: '1px solid #e2e8f0', borderTop: 'none' },
+  dl:               { margin: 0 },
+  empty:            { color: '#94a3b8', textAlign: 'center' as const, padding: 24 },
+  btnPrimary:       { padding: '8px 18px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' },
+  btnMiniSecondary: { padding: '5px 12px', background: '#fff', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 12, cursor: 'pointer' },
+  btnMiniDanger:    { padding: '5px 12px', background: '#fff', border: '1px solid #fca5a5', borderRadius: 6, fontSize: 12, cursor: 'pointer', color: '#dc2626' },
+  tutorCard:        { border: '1px solid #e2e8f0', borderRadius: 10, padding: '14px 16px', marginBottom: 10, background: '#fafafa' },
+  tutorHeader:      { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 6, flexWrap: 'wrap' as const },
+  tutorNombre:      { fontSize: 15, fontWeight: 700, color: '#0f172a', marginRight: 8 },
+  tutorRelacion:    { display: 'inline-block', padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700, background: '#e0f2fe', color: '#0369a1', marginRight: 6 },
+  tutorMeta:        { fontSize: 12, color: '#64748b' },
   historialItem: {
     display: 'flex',
     flexDirection: 'column',

@@ -22,6 +22,7 @@ import {
   MessageCircle,
   AlertTriangle,
   Mail,
+  Newspaper,
   ChevronDown,
   X,
   type LucideIcon,
@@ -85,6 +86,15 @@ const GROUPS: NavGroupDef[] = [
       { to: '/espacios',        label: 'Espacios',        Icon: Building2 },
       { to: '/biblioteca',      label: 'Biblioteca',      Icon: Library },
       { to: '/usuarios',        label: 'Usuarios',        Icon: ShieldCheck, hiddenFor: ['docente', 'alumno'] },
+    ],
+  },
+  {
+    key: 'portal',
+    label: 'Portal Institucional',
+    Icon: Newspaper,
+    defaultOpen: false,
+    items: [
+      { to: '/portal', label: 'Noticias & Portal', Icon: Newspaper, hiddenFor: ['docente', 'alumno'] },
     ],
   },
   {

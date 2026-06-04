@@ -53,7 +53,11 @@ export function EditorDocentePage() {
 
   const [form, setForm] = useState({
     nombre: '', apellido: '', dni: '', email: '',
-    telefono: '', titulo: '', fecha_ingreso: '',
+    telefono: '', fecha_nacimiento: '', genero: '', nacionalidad: '',
+    domicilio_calle: '', domicilio_numero: '', domicilio_piso: '',
+    domicilio_torre: '', domicilio_depto: '',
+    localidad: '', provincia: '', codigo_postal: '',
+    titulo: '', fecha_ingreso: '',
     estado: 'activo' as EstadoDocente, observaciones: '',
   });
   const [especialidades, setEspecialidades] = useState<string[]>([]);
@@ -62,15 +66,26 @@ export function EditorDocentePage() {
   useEffect(() => {
     if (existing) {
       setForm({
-        nombre:        existing.nombre,
-        apellido:      existing.apellido,
-        dni:           existing.dni ?? '',
-        email:         existing.email ?? '',
-        telefono:      existing.telefono ?? '',
-        titulo:        existing.titulo ?? '',
-        fecha_ingreso: existing.fecha_ingreso?.slice(0, 10) ?? '',
-        estado:        existing.estado,
-        observaciones: existing.observaciones ?? '',
+        nombre:           existing.nombre,
+        apellido:         existing.apellido,
+        dni:              existing.dni          ?? '',
+        email:            existing.email        ?? '',
+        telefono:         existing.telefono     ?? '',
+        fecha_nacimiento: (existing as any).fecha_nacimiento?.slice(0, 10) ?? '',
+        genero:           (existing as any).genero          ?? '',
+        nacionalidad:     (existing as any).nacionalidad    ?? '',
+        domicilio_calle:  (existing as any).domicilio_calle  ?? '',
+        domicilio_numero: (existing as any).domicilio_numero ?? '',
+        domicilio_piso:   (existing as any).domicilio_piso   ?? '',
+        domicilio_torre:  (existing as any).domicilio_torre  ?? '',
+        domicilio_depto:  (existing as any).domicilio_depto  ?? '',
+        localidad:        (existing as any).localidad        ?? '',
+        provincia:        (existing as any).provincia        ?? '',
+        codigo_postal:    (existing as any).codigo_postal    ?? '',
+        titulo:           existing.titulo        ?? '',
+        fecha_ingreso:    existing.fecha_ingreso?.slice(0, 10) ?? '',
+        estado:           existing.estado,
+        observaciones:    existing.observaciones ?? '',
       });
       setEspecialidades(existing.especialidades ?? []);
     }
@@ -89,40 +104,43 @@ export function EditorDocentePage() {
     return Object.keys(errors).length === 0;
   }
 
+  function buildDto() {
+    const phoneResult = validatePhone(form.telefono);
+    return {
+      nombre:           form.nombre,
+      apellido:         form.apellido,
+      dni:              form.dni              || undefined,
+      email:            form.email ? form.email.toLowerCase().trim() : undefined,
+      telefono:         phoneResult.normalized ?? (form.telefono || undefined),
+      fecha_nacimiento: form.fecha_nacimiento  || undefined,
+      genero:           form.genero            || undefined,
+      nacionalidad:     form.nacionalidad      || undefined,
+      domicilio_calle:  form.domicilio_calle   || undefined,
+      domicilio_numero: form.domicilio_numero  || undefined,
+      domicilio_piso:   form.domicilio_piso    || undefined,
+      domicilio_torre:  form.domicilio_torre   || undefined,
+      domicilio_depto:  form.domicilio_depto   || undefined,
+      localidad:        form.localidad         || undefined,
+      provincia:        form.provincia         || undefined,
+      codigo_postal:    form.codigo_postal     || undefined,
+      titulo:           form.titulo            || undefined,
+      fecha_ingreso:    form.fecha_ingreso      || (isEdit ? null : undefined),
+      especialidades,
+      observaciones:    form.observaciones     || undefined,
+    };
+  }
+
   const createMutation = useMutation({
-    mutationFn: () => {
-      const phoneResult = validatePhone(form.telefono);
-      return docentesApi.create({
-        nombre: form.nombre, apellido: form.apellido,
-        dni: form.dni || undefined,
-        email: form.email ? form.email.toLowerCase().trim() : undefined,
-        telefono: phoneResult.normalized ?? (form.telefono || undefined),
-        titulo: form.titulo || undefined,
-        fecha_ingreso: form.fecha_ingreso || undefined,
-        especialidades, observaciones: form.observaciones || undefined,
-      });
-    },
+    mutationFn: () => docentesApi.create(buildDto()),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['docentes'] }); navigate('/docentes'); },
   });
 
   const updateMutation = useMutation({
-    mutationFn: () => {
-      const phoneResult = validatePhone(form.telefono);
-      return docentesApi.update(id!, {
-        nombre: form.nombre, apellido: form.apellido,
-        dni: form.dni || undefined,
-        email: form.email ? form.email.toLowerCase().trim() : undefined,
-        telefono: phoneResult.normalized ?? (form.telefono || undefined),
-        titulo: form.titulo || undefined,
-        fecha_ingreso: form.fecha_ingreso || null,
-        estado: form.estado, especialidades,
-        observaciones: form.observaciones || undefined,
-      });
-    },
+    mutationFn: () => docentesApi.update(id!, { ...buildDto(), estado: form.estado }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['docentes'] }); navigate('/docentes'); },
   });
 
-  const mutation = isEdit ? updateMutation : createMutation;
+  const mutation  = isEdit ? updateMutation : createMutation;
   const canSubmit = !!form.nombre.trim() && !!form.apellido.trim();
 
   const noEsStaff = !user?.roles?.some(r => ['admin', 'directivo', 'administrativo'].includes(r));
@@ -137,9 +155,7 @@ export function EditorDocentePage() {
       </div>
       <div style={{ marginBottom: 24 }}>
         <h1 style={S.title}>{isEdit ? 'Editar legajo docente' : 'Nuevo legajo docente'}</h1>
-        {isEdit && existing && (
-          <p style={S.subtitle}>{existing.apellido}, {existing.nombre}</p>
-        )}
+        {isEdit && existing && <p style={S.subtitle}>{existing.apellido}, {existing.nombre}</p>}
       </div>
 
       <form onSubmit={(e) => { e.preventDefault(); if (validateFields()) mutation.mutate(); }} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -148,41 +164,81 @@ export function EditorDocentePage() {
         <div style={S.card}>
           <h2 style={S.sectionTitle}>Datos personales</h2>
           <div style={S.grid2}>
-            <label style={S.label}>
-              Apellido *
+            <label style={S.label}>Apellido *
               <input style={S.input} value={form.apellido} onChange={set('apellido')} required placeholder="García" />
             </label>
-            <label style={S.label}>
-              Nombre *
+            <label style={S.label}>Nombre *
               <input style={S.input} value={form.nombre} onChange={set('nombre')} required placeholder="Juan" />
             </label>
-            <label style={S.label}>
-              DNI
+            <label style={S.label}>DNI
               <input style={S.input} value={form.dni} onChange={set('dni')} placeholder="12345678" />
             </label>
-            <label style={S.label}>
-              Email
+            <label style={S.label}>Fecha de nacimiento
+              <input style={S.input} type="date" value={form.fecha_nacimiento} onChange={set('fecha_nacimiento')} />
+            </label>
+            <label style={S.label}>Género
+              <select style={S.input} value={form.genero} onChange={set('genero')}>
+                <option value="">Sin especificar</option>
+                <option value="masculino">Masculino</option>
+                <option value="femenino">Femenino</option>
+                <option value="otro">Otro</option>
+                <option value="no_especificado">Prefiero no decir</option>
+              </select>
+            </label>
+            <label style={S.label}>Nacionalidad
+              <input style={S.input} value={form.nacionalidad} onChange={set('nacionalidad')} placeholder="Argentina" />
+            </label>
+            <label style={S.label}>Email
               <input
                 style={{ ...S.input, ...(fieldErrors.email ? S.inputError : {}) }}
                 value={form.email}
-                onChange={(e) => { set('email')(e); setFieldErrors(f => ({ ...f, email: undefined })); }}
+                onChange={(e) => { set('email')(e); setFieldErrors(prev => ({ ...prev, email: undefined })); }}
                 placeholder="docente@escuela.edu"
               />
               {fieldErrors.email && <span style={S.fieldError}>{fieldErrors.email}</span>}
             </label>
-            <label style={S.label}>
-              Teléfono
+            <label style={S.label}>Teléfono
               <input
                 style={{ ...S.input, ...(fieldErrors.telefono ? S.inputError : {}) }}
                 value={form.telefono}
-                onChange={(e) => { set('telefono')(e); setFieldErrors(f => ({ ...f, telefono: undefined })); }}
+                onChange={(e) => { set('telefono')(e); setFieldErrors(prev => ({ ...prev, telefono: undefined })); }}
                 placeholder="+54 9 11 1234-5678"
               />
               {fieldErrors.telefono && <span style={S.fieldError}>{fieldErrors.telefono}</span>}
             </label>
-            <label style={S.label}>
-              Fecha de ingreso
+            <label style={S.label}>Fecha de ingreso
               <input style={S.input} type="date" value={form.fecha_ingreso} onChange={set('fecha_ingreso')} />
+            </label>
+          </div>
+        </div>
+
+        {/* Domicilio */}
+        <div style={S.card}>
+          <h2 style={S.sectionTitle}>Domicilio</h2>
+          <div style={{ ...S.grid2, gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}>
+            <label style={{ ...S.label, gridColumn: 'span 2' }}>Calle
+              <input style={S.input} value={form.domicilio_calle} onChange={set('domicilio_calle')} placeholder="Av. Corrientes" />
+            </label>
+            <label style={S.label}>Número
+              <input style={S.input} value={form.domicilio_numero} onChange={set('domicilio_numero')} placeholder="1234" />
+            </label>
+            <label style={S.label}>Piso
+              <input style={S.input} value={form.domicilio_piso} onChange={set('domicilio_piso')} placeholder="3" />
+            </label>
+            <label style={S.label}>Torre
+              <input style={S.input} value={form.domicilio_torre} onChange={set('domicilio_torre')} placeholder="B" />
+            </label>
+            <label style={S.label}>Depto
+              <input style={S.input} value={form.domicilio_depto} onChange={set('domicilio_depto')} placeholder="4B" />
+            </label>
+            <label style={S.label}>Localidad
+              <input style={S.input} value={form.localidad} onChange={set('localidad')} placeholder="CABA" />
+            </label>
+            <label style={S.label}>Provincia
+              <input style={S.input} value={form.provincia} onChange={set('provincia')} placeholder="Buenos Aires" />
+            </label>
+            <label style={S.label}>Código postal
+              <input style={S.input} value={form.codigo_postal} onChange={set('codigo_postal')} placeholder="1043" />
             </label>
           </div>
         </div>
@@ -191,8 +247,7 @@ export function EditorDocentePage() {
         <div style={S.card}>
           <h2 style={S.sectionTitle}>Datos profesionales</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <label style={S.label}>
-              Título docente
+            <label style={S.label}>Título docente
               <input style={S.input} value={form.titulo} onChange={set('titulo')} placeholder="Ej: Profesor en Matemática, Licenciado en Historia..." />
             </label>
             <div>
@@ -207,8 +262,7 @@ export function EditorDocentePage() {
           <h2 style={S.sectionTitle}>Estado y observaciones</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {isEdit && (
-              <label style={S.label}>
-                Estado
+              <label style={S.label}>Estado
                 <select style={S.input} value={form.estado} onChange={set('estado') as any}>
                   <option value="activo">Activo</option>
                   <option value="inactivo">Inactivo</option>
@@ -216,8 +270,7 @@ export function EditorDocentePage() {
                 </select>
               </label>
             )}
-            <label style={S.label}>
-              Observaciones
+            <label style={S.label}>Observaciones
               <textarea
                 style={{ ...S.input, resize: 'vertical', minHeight: 80, fontFamily: 'inherit' }}
                 value={form.observaciones}

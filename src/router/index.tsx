@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { Layout } from '../shared/components/Layout';
+import { PublicLayout } from '../shared/components/PublicLayout';
 import { ProtectedRoute } from '../shared/components/ProtectedRoute';
 import { DashboardPage } from '../modules/dashboard/pages/DashboardPage';
 import { LoginPage } from '../modules/auth/pages/LoginPage';
@@ -33,7 +34,7 @@ import { MesaDetallePage } from '../modules/examenes/pages/MesaDetallePage';
 import { DiarioClasesPage } from '../modules/planificacion/pages/DiarioClasesPage';
 import { BibliotecaCatalogoPage } from '../modules/biblioteca/pages/BibliotecaCatalogoPage';
 import { BibliotecaFichaPage } from '../modules/biblioteca/pages/BibliotecaFichaPage';
-import { BibliotecaPanelPage } from '../modules/biblioteca/pages/BibliotecaPanelPage'; // usado como formulario crear/editar
+import { BibliotecaPanelPage } from '../modules/biblioteca/pages/BibliotecaPanelPage';
 import { EspaciosPage } from '../modules/espacios/pages/EspaciosPage';
 import { EspaciosReservaPage } from '../modules/espacios/pages/EspaciosReservaPage';
 import { EspaciosMisReservasPage } from '../modules/espacios/pages/EspaciosMisReservasPage';
@@ -44,71 +45,112 @@ import { CircularFormPage } from '../modules/comunicacion/pages/CircularFormPage
 import { UsuariosPage } from '../modules/usuarios/pages/UsuariosPage';
 import { AdministrativosPage } from '../modules/administrativos/pages/AdministrativosPage';
 import { EditorAdministrativoPage } from '../modules/administrativos/pages/EditorAdministrativoPage';
+// Portal
+import { HomePage } from '../modules/portal/pages/HomePage';
+import { NoticiaDetallePage } from '../modules/portal/pages/NoticiaDetallePage';
+import { PortalAdminPage } from '../modules/portal/pages/PortalAdminPage';
+import { NoticiaEditorPage } from '../modules/portal/pages/NoticiaEditorPage';
 
 export const router = createBrowserRouter([
+
+  // ── Rutas públicas (sin login) ───────────────────────────────────
   {
-    path: '/login',
-    element: <LoginPage />,
+    element: <PublicLayout />,
+    children: [
+      { path: '/', element: <HomePage /> },
+      { path: '/noticias/:slug', element: <NoticiaDetallePage /> },
+    ],
   },
-  {
-    path: '/activar-cuenta',
-    element: <ActivarCuentaPage />,
-  },
+
+  // ── Auth ─────────────────────────────────────────────────────────
+  { path: '/login',           element: <LoginPage /> },
+  { path: '/activar-cuenta',  element: <ActivarCuentaPage /> },
+
+  // ── Rutas protegidas ─────────────────────────────────────────────
   {
     element: <ProtectedRoute />,
     children: [
       {
         element: <Layout />,
         children: [
-          { index: true, element: <DashboardPage /> },
-          { path: 'cambiar-password', element: <CambiarPasswordPage /> },
-          { path: 'alumnos', element: <AlumnosHubPage /> },
-          { path: 'alumnos/nuevo', element: <CreateAlumnoPage /> },
-          { path: 'alumnos/buscar-curso', element: <BuscarCursoPage /> },
-          { path: 'alumnos/:id', element: <AlumnoDetailPage /> },
-          { path: 'alumnos/:id/historial-academico', element: <HistorialAcademicoPage /> },
-          { path: 'alumnos/:id/seguimiento', element: <SeguimientoPage /> },
-          { path: 'calificaciones', element: <CalificacionesPage /> },
-          { path: 'calificaciones/cargar', element: <CargarCalificacionesPage /> },
-          { path: 'calificaciones/libro', element: <LibroCalificacionesPage /> },
-          { path: 'inscripciones', element: <InscripcionesPage /> },
-          { path: 'inscripciones/nueva', element: <NuevaInscripcionPage /> },
-          { path: 'alertas', element: <AlertasPage /> },
-          { path: 'alta-academica', element: <AltaAcademicaPage /> },
-          { path: 'asistencias', element: <AsistenciasPage /> },
-          { path: 'asistencias/tomar', element: <TomarAsistenciaPage /> },
-          { path: 'asistencias/resumen', element: <ResumenAsistenciaPage /> },
-          { path: 'planificacion',              element: <PlanificacionPage /> },
-          { path: 'planificacion/nueva',        element: <EditorPlanificacionPage /> },
-          { path: 'planificacion/:id',          element: <VisorPlanificacionPage /> },
-          { path: 'planificacion/:id/editar',   element: <EditorPlanificacionPage /> },
-          { path: 'docentes',                   element: <DocentesPage /> },
-          { path: 'docentes/nuevo',             element: <EditorDocentePage /> },
-          { path: 'docentes/asignaciones',      element: <AsignacionesPage /> },
-          { path: 'docentes/:id/editar',        element: <EditorDocentePage /> },
-          { path: 'calendario',                 element: <CalendarioPage /> },
-          { path: 'examenes',                        element: <MesasPage /> },
-          { path: 'examenes/:id',                    element: <MesaDetallePage /> },
-          { path: 'planificacion/:id/diario',        element: <DiarioClasesPage /> },
-          { path: 'biblioteca',                      element: <BibliotecaCatalogoPage /> },
-          { path: 'biblioteca/nuevo',                element: <BibliotecaPanelPage /> },
-          { path: 'biblioteca/:id/editar',           element: <BibliotecaPanelPage /> },
-          { path: 'biblioteca/:id',                  element: <BibliotecaFichaPage /> },
-          { path: 'espacios',                        element: <EspaciosPage /> },
-          { path: 'espacios/nueva-reserva',          element: <EspaciosReservaPage /> },
-          { path: 'espacios/mis-reservas',           element: <EspaciosMisReservasPage /> },
-          { path: 'espacios/mantenimiento',          element: <EspaciosMantenimientoPage /> },
-          { path: 'comunicacion',                    element: <CircularesPage /> },
-          { path: 'comunicacion/nueva',              element: <CircularFormPage /> },
-          { path: 'comunicacion/:id/editar',         element: <CircularFormPage /> },
-          { path: 'comunicacion/:id',                element: <CircularDetailPage /> },
-          { path: 'usuarios',                        element: <UsuariosPage /> },
-          { path: 'administrativos',                 element: <AdministrativosPage /> },
-          { path: 'administrativos/nuevo',           element: <EditorAdministrativoPage /> },
-          { path: 'administrativos/:id/editar',      element: <EditorAdministrativoPage /> },
+          { path: '/app',                element: <DashboardPage /> },
+          { path: '/cambiar-password',   element: <CambiarPasswordPage /> },
+
+          // Alumnos
+          { path: '/alumnos',                           element: <AlumnosHubPage /> },
+          { path: '/alumnos/nuevo',                     element: <CreateAlumnoPage /> },
+          { path: '/alumnos/buscar-curso',              element: <BuscarCursoPage /> },
+          { path: '/alumnos/:id',                       element: <AlumnoDetailPage /> },
+          { path: '/alumnos/:id/historial-academico',   element: <HistorialAcademicoPage /> },
+          { path: '/alumnos/:id/seguimiento',           element: <SeguimientoPage /> },
+
+          // Calificaciones
+          { path: '/calificaciones',         element: <CalificacionesPage /> },
+          { path: '/calificaciones/cargar',  element: <CargarCalificacionesPage /> },
+          { path: '/calificaciones/libro',   element: <LibroCalificacionesPage /> },
+
+          // Inscripciones
+          { path: '/inscripciones',        element: <InscripcionesPage /> },
+          { path: '/inscripciones/nueva',  element: <NuevaInscripcionPage /> },
+
+          // Otros módulos
+          { path: '/alertas',              element: <AlertasPage /> },
+          { path: '/alta-academica',       element: <AltaAcademicaPage /> },
+          { path: '/asistencias',          element: <AsistenciasPage /> },
+          { path: '/asistencias/tomar',    element: <TomarAsistenciaPage /> },
+          { path: '/asistencias/resumen',  element: <ResumenAsistenciaPage /> },
+
+          // Planificación
+          { path: '/planificacion',              element: <PlanificacionPage /> },
+          { path: '/planificacion/nueva',        element: <EditorPlanificacionPage /> },
+          { path: '/planificacion/:id',          element: <VisorPlanificacionPage /> },
+          { path: '/planificacion/:id/editar',   element: <EditorPlanificacionPage /> },
+          { path: '/planificacion/:id/diario',   element: <DiarioClasesPage /> },
+
+          // Docentes
+          { path: '/docentes',                 element: <DocentesPage /> },
+          { path: '/docentes/nuevo',           element: <EditorDocentePage /> },
+          { path: '/docentes/asignaciones',    element: <AsignacionesPage /> },
+          { path: '/docentes/:id/editar',      element: <EditorDocentePage /> },
+
+          // Calendario & Exámenes
+          { path: '/calendario',       element: <CalendarioPage /> },
+          { path: '/examenes',         element: <MesasPage /> },
+          { path: '/examenes/:id',     element: <MesaDetallePage /> },
+
+          // Biblioteca
+          { path: '/biblioteca',               element: <BibliotecaCatalogoPage /> },
+          { path: '/biblioteca/nuevo',         element: <BibliotecaPanelPage /> },
+          { path: '/biblioteca/:id/editar',    element: <BibliotecaPanelPage /> },
+          { path: '/biblioteca/:id',           element: <BibliotecaFichaPage /> },
+
+          // Espacios
+          { path: '/espacios',                   element: <EspaciosPage /> },
+          { path: '/espacios/nueva-reserva',     element: <EspaciosReservaPage /> },
+          { path: '/espacios/mis-reservas',      element: <EspaciosMisReservasPage /> },
+          { path: '/espacios/mantenimiento',     element: <EspaciosMantenimientoPage /> },
+
+          // Comunicación
+          { path: '/comunicacion',               element: <CircularesPage /> },
+          { path: '/comunicacion/nueva',         element: <CircularFormPage /> },
+          { path: '/comunicacion/:id/editar',    element: <CircularFormPage /> },
+          { path: '/comunicacion/:id',           element: <CircularDetailPage /> },
+
+          // Usuarios & Personal
+          { path: '/usuarios',                        element: <UsuariosPage /> },
+          { path: '/administrativos',                 element: <AdministrativosPage /> },
+          { path: '/administrativos/nuevo',           element: <EditorAdministrativoPage /> },
+          { path: '/administrativos/:id/editar',      element: <EditorAdministrativoPage /> },
+
+          // Portal institucional — admin
+          { path: '/portal',                          element: <PortalAdminPage /> },
+          { path: '/portal/noticias/nueva',           element: <NoticiaEditorPage /> },
+          { path: '/portal/noticias/:id/editar',      element: <NoticiaEditorPage /> },
         ],
       },
     ],
   },
+
+  // Fallback: ruta raíz redirige al portal público
   { path: '*', element: <Navigate to="/" replace /> },
 ]);
